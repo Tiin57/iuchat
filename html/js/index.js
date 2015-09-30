@@ -133,4 +133,5 @@ $(function() {
 		setupPreLogin();
 	});
 	setupPreLogin();
+	$("#input").focus();
 ;});
