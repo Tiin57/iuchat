@@ -2,6 +2,7 @@ var socket;
 var channel = "#general";
 var sentUsername = false;
 var username = "";
+var serverURL = "http://localhost:4236";
 
 function getWindowWidth() {
 	var width;
@@ -91,6 +92,8 @@ function setupPostLogin() {
 function setupPreLogin() {
 	addText("Please enter your username and password in the input field below.");
 	document.getElementById("submit").onclick = onLoginSubmit;
+	sentUsername = false;
+	document.getElementById("input").type = "text";
 	document.getElementById("input").onkeydown = function(evt) {
 		if (evt.keyCode == 13) {
 			onLoginSubmit();
@@ -108,7 +111,7 @@ function processMessage(data) {
 $(function() {
 	fixClientSizes();
 	$(window).resize(fixClientSizes);
-	socket = io("http://localhost:4236");
+	socket = io(serverURL);
 	socket.on("chatmsg", function(data) {
 		processMessage(data);
 	});
@@ -118,6 +121,13 @@ $(function() {
 		} else {
 			setupPostLogin();
 		}
+	});
+	socket.on("connect", function() {
+		addText("Connected to the server (" + serverURL + ")");
+	});
+	socket.on("disconnect", function() {
+		addText("Disconnected from the server (" + serverURL + ")");
+		setupPreLogin();
 	});
 	setupPreLogin();
 ;});
