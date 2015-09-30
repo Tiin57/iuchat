@@ -9,3 +9,4 @@ html/js/jquery.min.js
 html/js/socket.io.js
 start.bat
 banned.json
+ssl

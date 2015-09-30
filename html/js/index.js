@@ -2,7 +2,7 @@ var socket;
 var channel = "#general";
 var sentUsername = false;
 var username = "";
-var serverURL = "http://localhost:4236";
+var serverURL = "wss://testing.csclub.cs.iupui.edu:4236";
 
 function getWindowWidth() {
 	var width;
@@ -90,7 +90,6 @@ function setupPostLogin() {
 }
 
 function setupPreLogin() {
-	addText("Please enter your username and password in the input field below.");
 	document.getElementById("submit").onclick = onLoginSubmit;
 	sentUsername = false;
 	document.getElementById("input").type = "text";
@@ -124,6 +123,10 @@ $(function() {
 	});
 	socket.on("connect", function() {
 		addText("Connected to the server (" + serverURL + ")");
+		if (serverURL.startsWith("wss://")) {
+			addText("Your connection to the server is encrypted via SSL.");
+		}
+		addText("Please enter your username and password in the input field below.");
 	});
 	socket.on("disconnect", function() {
 		addText("Disconnected from the server (" + serverURL + ")");
