@@ -1,0 +1,16 @@
+{
+	"name": "iuchat",
+	"description": "The chat system for IUPUI's Computer Science Club.",
+	"author": "Alexander Hicks <aldahick@iupui.edu>",
+	"version": "1.0.0",
+	"dependencies": {
+		"activedirectory": "^0.7.0",
+		"mysql": "2.9.0",
+		"socket.io": "1.3.7"
+	},
+	"engine": "node >= 4.1.1",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Tiin57/iuchat.git"
+	}
+}

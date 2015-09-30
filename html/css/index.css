@@ -1,0 +1,15 @@
+*, body, textarea, input, button {
+	font-family: monospace;
+	color: lime;
+	background-color: black;
+	outline: none;
+}
+textarea {
+	resize: none;
+	border: black;
+}
+#output {
+	height: 85%;
+	max-height: 85%;
+	overflow: auto;
+}
