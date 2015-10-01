@@ -62,6 +62,7 @@ var adConfig = {
 var commands = {
 	"ban": {
 		adminOnly: true,
+		help: "Bans a user and kicks them if online. Usage: /ban <username>",
 		callback: function(client, args) {
 			if (args.length === 0) {
 				sendSystemMessage(client.socket, "Usage: /ban <username>");
@@ -73,6 +74,7 @@ var commands = {
 	},
 	"unban": {
 		adminOnly: true,
+		help: "Unbans a user. Usage: /unban <username>",
 		callback: function(client, args) {
 			if (args.length === 0) {
 				sendSystemMessage(client.socket, "Usage: /unban <username>");
@@ -84,6 +86,7 @@ var commands = {
 	},
 	"kick": {
 		adminOnly: true,
+		help: "Kicks a user, disconnecting them. Usage: /kick <username>",
 		callback: function(client, args) {
 			if (args.length === 0) {
 				sendSystemMessage(client.socket, "Usage: /kick <user> [reason]");
@@ -96,6 +99,7 @@ var commands = {
 	},
 	"whois": {
 		adminOnly: false,
+		help: "Gets all available information of a user. Usage: /whois <username>",
 		callback: function(client, args) {
 			if (args.length === 0) {
 				sendSystemMessage(client.socket, "Usage: /whois <user>");
@@ -106,12 +110,25 @@ var commands = {
 	},
 	"nick": {
 		adminOnly: false,
+		help: "Changes or sets your nickname. Usage: /nick <nickname>",
 		callback: function(client, args) {
 			if (args.length === 0) {
 				sendSystemMessage(client.socket, "Usage: /nick <nickname>");
 				return;
 			}
 			nickUser(client, args[0]);
+		}
+	},
+	"help": {
+		adminOnly: false,
+		help: "Displays this help message.",
+		callback: function(client, args) {
+			for (var i in commands) {
+				if (commands[i].isAdmin && !client.isAdmin) {
+					continue;
+				}
+				sendSystemMessage(client.socket, "/" + i + ": " + commands[i].help)
+			}
 		}
 	}
 };
@@ -213,6 +230,7 @@ function kickUser(author, username, reason) {
 		if (clients[i].username == username) {
 			sendSystemMessage(clients[i].socket, "You have been kicked by " + author + " for \"" + reason + "\"");
 			sendSystemMessage(clients[i].socket.broadcast, clients[i].firstName + " has been kicked by " + author + ".");
+			clients[i].isLoggedIn = false;
 			clients[i].socket.disconnect();
 			clients.splice(i, 1);
 		}
@@ -329,7 +347,7 @@ function Client(socket) {
 		}
 		for (var i in banned) {
 			if (i == data.username && banned[i].current) {
-				sendSystemMessage(client.socket, "You are banned from IU Chat.");
+				sendSystemMessage(client.socket, "You were banned from IU Chat by " + banned[i].author + " on " + banned[i].date + " at " + banned[i].time);
 				return;
 			}
 		}
@@ -344,6 +362,7 @@ function Client(socket) {
 					client.username = username;
 					if (nicknames[username]) {
 						client.firstName = nicknames[username];
+						client.hasNickname = true;
 					}
 					setupUserData(ad, client, function(isCorrect) {
 						if (isCorrect) {

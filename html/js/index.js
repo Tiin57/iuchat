@@ -70,6 +70,7 @@ function onLoginSubmit() {
 		username = data;
 		sentUsername = true;
 		document.getElementById("input").type = "password";
+		document.getElementById("input").placeholder = "IU Password";
 	} else {
 		var password = data;
 		socket.emit("login", {
@@ -77,10 +78,12 @@ function onLoginSubmit() {
 			password: password
 		});
 		document.getElementById("input").type = "text";
+		document.getElementById("input").placeholder = "";
 	}
 }
 
 function setupPostLogin() {
+	document.getElementById("input").placeholder = "";
 	document.getElementById("submit").onclick = onInputSubmit;
 	document.getElementById("input").onkeydown = function(evt) {
 		if (evt.keyCode == 13) {
@@ -91,6 +94,7 @@ function setupPostLogin() {
 
 function setupPreLogin() {
 	document.getElementById("submit").onclick = onLoginSubmit;
+	document.getElementById("input").placeholder = "IU Username";
 	sentUsername = false;
 	document.getElementById("input").type = "text";
 	document.getElementById("input").onkeydown = function(evt) {
@@ -117,6 +121,7 @@ $(function() {
 	socket.on("login", function(data) {
 		if (!data.isLoggedIn) {
 			sentUsername = false;
+			document.getElementById("input").placeholder = "IU Username";
 		} else {
 			setupPostLogin();
 		}

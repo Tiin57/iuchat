@@ -10,3 +10,4 @@ html/js/socket.io.js
 start.bat
 banned.json
 ssl
+nicknames.json
