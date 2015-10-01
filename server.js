@@ -19,6 +19,7 @@ var fs = require("fs");
 var ActiveDirectory = require("activedirectory");
 var cfg = require("./config.json"); // Load config first, since https setup requires values from it
 var bunyan = require("bunyan");
+var querystring = require("querystring");
 var httpServer = null;
 // Create HTTP server for use in Socket.IO
 // Socket.IO does not allow us to specify SSL files.
@@ -29,9 +30,9 @@ if (cfg["avoidSSL"]) {
 } else {
 	var https = require("https");
 	httpServer = https.Server({
-		cert: cfg.https.cert,
-		key: cfg.https.key,
-		ca: cfg.https.ca
+		cert: fs.readFileSync(cfg.https.cert),
+		key: fs.readFileSync(cfg.https.key),
+		ca: fs.readFileSync(cfg.https.ca)
 	});
 }
 var crypto = require("crypto");
@@ -217,6 +218,35 @@ function createCallback(func, a) {
 	};
 }
 
+function postHTTPS(url, args, callback) {
+	var data = querystring.stringify(args);
+	var tokens = url.split("/");
+	var host = tokens.splice(0, 1)[0];
+	var path = "/" + tokens.join("/");
+	var options = {
+		hostname: host,
+		port: 443,
+		"path": path,
+		method: "POST",
+		headers: {
+			"Content-Type": "application/x-www-form-urlencoded",
+			"Content-Length": data.length
+		}
+	};
+	var ret = "";
+	var req = https.request(options, function(res) {
+		res.setEncoding("utf8");
+		res.on("data", function(chunk) {
+			ret += chunk;
+		});
+		res.on("end", function() {
+			callback(res.statusCode, ret);
+		});
+	});
+	req.write(data);
+	req.end();
+}
+
 function sendSystemMessage(socket, message) {
 	var lines = message.split("\n");
 	for (var i in lines) {
@@ -331,6 +361,9 @@ Should only be called by verifyLDAP().
 function generateADConfig(username, password) {
 	return {
 		url: adConfig.url,
+		hostname: cfg.ldap.server,
+		port: cfg.ldap.port,
+		ssl: cfg.ldap.ssl,
 		baseDN: adConfig.baseDN,
 		scope: adConfig.scope,
 		log: adConfig.log,
@@ -346,38 +379,80 @@ Checks <username> and <password> against Active Directory as a user.
 function verifyLDAP(username, password, callback) {
 	username = "ADS\\" + username;
 	var adcfg = generateADConfig(username, password);
-	var ad = new ActiveDirectory(adcfg);
-	ad.authenticate(username, password, function(err, auth) {
-		if (err) {
-			callback(false, username, null);
-			return;
-		}
-		callback(!!auth, username, ad);
-	});
+	if (cfg.proxy.useMe) {
+		adcfg.operation = "authenticate";
+		adcfg.rawUsername = username;
+		postHTTPS(cfg.proxy.url, adcfg, function(code, auth) {
+			if (code != 200 || auth.startsWith("err")) {
+				error("Failed at verifyLDAP with " + auth);
+				callback(false, username, null);
+				return;
+			}
+			callback(auth == "true", username, adcfg);
+		});
+	} else {
+		var ad = new ActiveDirectory(adcfg);
+		ad.authenticate(username, password, function(err, auth) {
+			if (err) {
+				callback(false, username, null);
+				return;
+			}
+			callback(!!auth, username, ad);
+		});
+	}
 }
 
 function setupUserData(ad, client, isBot, callback) {
 	var username = client.username;
-	ad.findUser(username, function(err, user) {
-		if (err) {
-			callback(false);
-			return;
-		}
-		if (client.firstName == "") {
-			client.firstName = user.givenName;
-			if (client.firstName == undefined || client.firstName == "undefined") {
-				client.firstName = client.username;
-				client.hasNickname = true;
+	if (cfg.proxy.useMe) {
+		ad.operation = "getUser";
+		ad.rawUsername = username;
+		postHTTPS(cfg.proxy.url, ad, function(code, user) {
+			if (code != 200) {
+				error("Failed at setupUserData");
+				callback(false);
+				return;
 			}
-		}
-		if (isBot) {
-			client.firstName += " (BOT)";
-		}
-		if (cfg.admins[client.username]) {
-			client.isAdmin = true;
-		}
-		callback(true);
-	});
+			if (user.startsWith("err")) {
+				error("Failed at setupUserData with " + user);
+				callback(false);
+				return;
+			}
+			user = JSON.parse(user);
+			if (client.firstName == "") {
+				client.firstName = user.givenName;
+				if (client.firstName == undefined || client.firstName == "undefined") {
+					client.firstName = client.username;
+					client.hasNickname = true;
+				}
+			}
+			if (cfg.admins[client.username]) {
+				client.isAdmin = true;
+			}
+			callback(true);
+		});
+	} else {
+		ad.findUser(username, function(err, user) {
+			if (err) {
+				callback(false);
+				return;
+			}
+			if (client.firstName == "") {
+				client.firstName = user.givenName;
+				if (client.firstName == undefined || client.firstName == "undefined") {
+					client.firstName = client.username;
+					client.hasNickname = true;
+				}
+			}
+			if (isBot) {
+				client.firstName += " (BOT)";
+			}
+			if (cfg.admins[client.username]) {
+				client.isAdmin = true;
+			}
+			callback(true);
+		});
+	}
 }
 
 function validateUsername(username) {

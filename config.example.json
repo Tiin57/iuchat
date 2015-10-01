@@ -14,5 +14,9 @@
 		"key": "ssl/cs_iupui_edu.key",
 		"ca": "ssl/cs_iupui_edu.ca-bundle"
 	},
-	"avoidSSL": false
+	"avoidSSL": false,
+	"proxy": {
+		"useMe": false,
+		"url": "http://domain.me/ldap.php"
+	}
 }
