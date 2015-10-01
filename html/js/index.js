@@ -3,7 +3,7 @@ var channel = "#general";
 var sentUsername = false;
 var username = "";
 var password = "";
-var serverURL = "wss://testing.csclub.cs.iupui.edu:4236";
+var serverURL = "YOUR_URL_HERE";
 
 function getWindowWidth() {
 	var width;

@@ -13,5 +13,6 @@
 		"cert": "ssl/cs_iupui_edu.crt",
 		"key": "ssl/cs_iupui_edu.key",
 		"ca": "ssl/cs_iupui_edu.ca-bundle"
-	}
+	},
+	"avoidSSL": false
 }

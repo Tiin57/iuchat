@@ -14,18 +14,37 @@ server, is encrypted with SSL. I strongly suggest acquiring signed SSL certifica
 Author: Alexander David Hicks (Tiin57, aldahick)
 Date created: 29 September, 2015
 */
+// Load modules
 var fs = require("fs");
 var ActiveDirectory = require("activedirectory");
-var cfg = require("./config.json");
+var cfg = require("./config.json"); // Load config first, since https setup requires values from it
 var bunyan = require("bunyan");
-var https = require("https");
+var httpServer = null;
+// Create HTTP server for use in Socket.IO
+// Socket.IO does not allow us to specify SSL files.
+// If we're avoiding SSL, just make an HTTP server
+if (cfg["avoidSSL"]) {
+	var http = require("http");
+	httpServer = http.Server();
+} else {
+	var https = require("https");
+	httpServer = https.Server({
+		cert: cfg.https.cert,
+		key: cfg.https.key,
+		ca: cfg.https.ca
+	});
+}
 var crypto = require("crypto");
-var httpServer = https.Server({
-	cert: fs.readFileSync(cfg.https.cert),
-	key: fs.readFileSync(cfg.https.key),
-	ca: fs.readFileSync(cfg.https.ca)
-});
-var io = require("socket.io")(httpServer);
+var io = require("socket.io")(httpServer); // Construct Socket.IO server using HTTPS server.
+
+/**
+Attempts to load a JSON file and return the data.
+If the file does not exist or is not readable, the method
+will attempt to create it with initial contents of "{}"
+and return {}.
+@param file The file to operate on
+@return The unserialized JSON data contained in the file
+*/
 function loadDataJSON(file) {
 	try {
 		fs.accessSync(file, fs.F_OK | fs.R_OK);
@@ -38,23 +57,32 @@ function loadDataJSON(file) {
 var banned = loadDataJSON("./banned.json");
 var nicknames = loadDataJSON("./nicknames.json");
 var hashes = loadDataJSON("./hashes.json");
+// Create a logger for use in activedirectory module, so we get all data.
 var log = bunyan.createLogger({
 	"name": "IU Chat",
 	"streams": [{
-		"level": "trace",
+		"level": "error",
 		"stream": fs.createWriteStream("iuchat-adtrace.log")
 	}]
 });
-var clients = [];
+var clients = []; // We need this for WHOIS and KICK.
+// Global ActiveDirectory config
 var adConfig = {
 	url: "ldap" + (cfg.ldap.ssl ? "s" : "") + "://" + cfg.ldap.server + ":" + cfg.ldap.port,
 	baseDN: cfg.ldap.baseDN,
-	username: cfg.ldap.username,
-	password: cfg.ldap.password,
 	scope: "one",
 	"log": log
 };
-
+/**
+Commands are registered here.
+Keys/values:
+{
+	boolean adminOnly: If the command requires admin
+	string help: Message displayed when /help is used.
+	function callback: Code for the command to execcute
+}
+Documentation of each command's purpose can be found in "help"
+*/
 var commands = {
 	"ban": {
 		adminOnly: true,
@@ -143,6 +171,10 @@ var commands = {
 	}
 };
 
+/*
+Logs a string as info.
+@param 
+*/
 function info(data) {
 	console.log("[INFO] " + data.toString());
 }
