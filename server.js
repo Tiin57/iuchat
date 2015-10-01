@@ -19,29 +19,25 @@ var ActiveDirectory = require("activedirectory");
 var cfg = require("./config.json");
 var bunyan = require("bunyan");
 var https = require("https");
-var querystring = require("querystring");
+var crypto = require("crypto");
 var httpServer = https.Server({
 	cert: fs.readFileSync(cfg.https.cert),
 	key: fs.readFileSync(cfg.https.key),
 	ca: fs.readFileSync(cfg.https.ca)
 });
 var io = require("socket.io")(httpServer);
-var banned = {};
-var nicknames = {};
-fs.access("./banned.json", fs.F_OK | fs.R_OK | fs.W_OK, function(err) {
-	if (!err) {
-		banned = require("./banned.json");
-	} else {
-		fs.writeFileSync("./banned.json", "{}");
+function loadDataJSON(file) {
+	try {
+		fs.accessSync(file, fs.F_OK | fs.R_OK);
+	} catch (ex) {
+		fs.writeFileSync(file, "{}");
+		return {};
 	}
-});
-fs.access("./nicknames.json", fs.F_OK | fs.R_OK | fs.W_OK, function(err) {
-	if (!err) {
-		nicknames = require("./nicknames.json");
-	} else {
-		fs.writeFileSync("./nicknames.json", "{}");
-	}
-});
+	return require(file);
+}
+var banned = loadDataJSON("./banned.json");
+var nicknames = loadDataJSON("./nicknames.json");
+var hashes = loadDataJSON("./hashes.json");
 var log = bunyan.createLogger({
 	"name": "IU Chat",
 	"streams": [{
@@ -130,6 +126,20 @@ var commands = {
 				sendSystemMessage(client.socket, "/" + i + ": " + commands[i].help)
 			}
 		}
+	},
+	"bot": {
+		adminOnly: false,
+		help: "Generates or retrieves a unique hash for use in a bot.",
+		callback: function(client, args) {
+			if (!hashes[client.username]) {
+				var hash = client.username + generateBotHash();
+				var sha256 = crypto.createHash("sha256");
+				sha256.update(hash);
+				hashes[client.username] = sha256.digest("hex");
+				fs.writeFileSync("./hashes.json", JSON.stringify(hashes));
+			}
+			sendSystemMessage(client.socket, "Your hash is " + hashes[client.username]);
+		}
 	}
 };
 
@@ -209,6 +219,7 @@ function nickUser(client, nickname) {
 			return;
 		}
 	}
+	nickname = nickname.replace(" ", "").replace("\\", "").replace("*", "").replace("(", "").replace(")", "");
 	nicknames[client.username] = nickname;
 	client.firstName = nickname;
 	client.hasNickname = true;
@@ -272,6 +283,14 @@ function unbanUser(username) {
 	updateBans();
 }
 
+function generateBotHash() {
+	try {
+		return crypto.randomBytes(32).toString("hex");
+	} catch (ex) {
+		return false;
+	}
+}
+
 /*
 *** PASSWORD ACCESS ***
 Builds a modified configuration based on <username> and <password>.
@@ -305,7 +324,7 @@ function verifyLDAP(username, password, callback) {
 	});
 }
 
-function setupUserData(ad, client, callback) {
+function setupUserData(ad, client, isBot, callback) {
 	var username = client.username;
 	ad.findUser(username, function(err, user) {
 		if (err) {
@@ -318,6 +337,9 @@ function setupUserData(ad, client, callback) {
 				client.firstName = client.username;
 				client.hasNickname = true;
 			}
+		}
+		if (isBot) {
+			client.firstName += " (BOT)";
 		}
 		if (cfg.admins[client.username]) {
 			client.isAdmin = true;
@@ -341,13 +363,29 @@ function Client(socket) {
 	this.isAdmin = false;
 	this.hasNickname = false;
 	socket.on("login", createCallback(function(client, data) {
-		if (!data || !data.username || !data.password) {
+		if (!data || ((!data.username && !data.key) || !data.password)) {
 			invalid(data);
 			return;
+		}
+		if (data.key) {
+			var isValid = false;
+			for (var i in hashes) {
+				if (hashes[i] == data.key) {
+					data.username = i;
+					isValid = true;
+					break;
+				}
+			}
+			if (!isValid) {
+				sendSystemMessage("Bot authentication with key " + data.key + " failed.");
+				client.socket.emit("login", {"isLoggedIn": false});
+				return;
+			}
 		}
 		for (var i in banned) {
 			if (i == data.username && banned[i].current) {
 				sendSystemMessage(client.socket, "You were banned from IU Chat by " + banned[i].author + " on " + banned[i].date + " at " + banned[i].time);
+				client.socket.emit("login", {"isLoggedIn": false});
 				return;
 			}
 		}
@@ -361,13 +399,14 @@ function Client(socket) {
 					sendSystemMessage(socket, msg);
 					client.username = username;
 					if (nicknames[username]) {
-						client.firstName = nicknames[username];
-						client.hasNickname = true;
+							client.firstName = nicknames[username];
+							client.hasNickname = true;
 					}
-					setupUserData(ad, client, function(isCorrect) {
+					setupUserData(ad, client, !!data.key, function(isCorrect) {
 						if (isCorrect) {
 							client.isLoggedIn = true;
 							client.socket.emit("login", {"isLoggedIn": true});
+							sendSystemBroadcast(client.socket, client.firstName + " has connected.");
 						}
 					});
 				} catch (ex) {

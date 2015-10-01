@@ -2,6 +2,7 @@ var socket;
 var channel = "#general";
 var sentUsername = false;
 var username = "";
+var password = "";
 var serverURL = "wss://testing.csclub.cs.iupui.edu:4236";
 
 function getWindowWidth() {
@@ -72,7 +73,7 @@ function onLoginSubmit() {
 		document.getElementById("input").type = "password";
 		document.getElementById("input").placeholder = "IU Password";
 	} else {
-		var password = data;
+		password = data;
 		socket.emit("login", {
 			username: username,
 			password: password
@@ -132,10 +133,16 @@ $(function() {
 			addText("Your connection to the server is encrypted via SSL.");
 		}
 		addText("Please enter your username and password in the input field below.");
+		if (username != "" && password != "") {
+			socket.emit("login", {
+				username: username,
+				password, password
+			});
+			addText("Attempting to reconnect to the server...");
+		}
 	});
 	socket.on("disconnect", function() {
 		addText("Disconnected from the server (" + serverURL + ")");
-		setupPreLogin();
 	});
 	setupPreLogin();
 	$("#input").focus();

@@ -11,3 +11,5 @@ start.bat
 banned.json
 ssl
 nicknames.json
+hashes.json
+config.bot.json
