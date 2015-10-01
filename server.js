@@ -254,35 +254,6 @@ function unbanUser(username) {
 	updateBans();
 }
 
-function postHTTPS(url, args, callback) {
-	var data = querystring.stringify(args);
-	var tokens = url.split("/");
-	var host = tokens.splice(0, 1)[0];
-	var path = "/" + tokens.join("/");
-	var options = {
-		hostname: host,
-		port: 443,
-		"path": path,
-		method: "POST",
-		headers: {
-			"Content-Type": "application/x-www-form-urlencoded",
-			"Content-Length": data.length
-		}
-	};
-	var ret = "";
-	var req = https.request(options, function(res) {
-		res.setEncoding("utf8");
-		res.on("data", function(chunk) {
-			ret += chunk;
-		});
-		res.on("end", function() {
-			callback(res.statusCode, ret);
-		});
-	});
-	req.write(data);
-	req.end();
-}
-
 /*
 *** PASSWORD ACCESS ***
 Builds a modified configuration based on <username> and <password>.
@@ -291,9 +262,6 @@ Should only be called by verifyLDAP().
 function generateADConfig(username, password) {
 	return {
 		url: adConfig.url,
-		hostname: cfg.ldap.server,
-		port: cfg.ldap.port,
-		ssl: cfg.ldap.ssl,
 		baseDN: adConfig.baseDN,
 		scope: adConfig.scope,
 		log: adConfig.log,
@@ -309,34 +277,23 @@ Checks <username> and <password> against Active Directory as a user.
 function verifyLDAP(username, password, callback) {
 	username = "ADS\\" + username;
 	var adcfg = generateADConfig(username, password);
-	adcfg.operation = "authenticate";
-	adcfg.rawUsername = username;
-	postHTTPS(cfg.php.ldap, adcfg, function(code, auth) {
-		if (code != 200 || auth.startsWith("err")) {
-			error("Failed at verifyLDAP with " + auth);
+	var ad = new ActiveDirectory(adcfg);
+	ad.authenticate(username, password, function(err, auth) {
+		if (err) {
 			callback(false, username, null);
 			return;
 		}
-		callback(auth == "true", username, adcfg);
+		callback(!!auth, username, ad);
 	});
 }
 
-function setupUserData(adcfg, client, callback) {
+function setupUserData(ad, client, callback) {
 	var username = client.username;
-	adcfg.operation = "getUser";
-	adcfg.rawUsername = username;
-	postHTTPS(cfg.php.ldap, adcfg, function(code, user) {
-		if (code != 200) {
-			error("Failed at setupUserData");
+	ad.findUser(username, function(err, user) {
+		if (err) {
 			callback(false);
 			return;
 		}
-		if (user.startsWith("err")) {
-			error("Failed at setupUserData with " + user);
-			callback(false);
-			return;
-		}
-		user = JSON.parse(user);
 		if (client.firstName == "") {
 			client.firstName = user.givenName;
 			if (client.firstName == undefined || client.firstName == "undefined") {
@@ -349,6 +306,10 @@ function setupUserData(adcfg, client, callback) {
 		}
 		callback(true);
 	});
+}
+
+function validateUsername(username) {
+	return username.replace("*", "").replace("(", "").replace(")", "").replace("\\", "");
 }
 
 /*
@@ -372,7 +333,8 @@ function Client(socket) {
 				return;
 			}
 		}
-		verifyLDAP(data.username, data.password, createCallback(function(client, auth, username, adcfg) {
+		var _username = validateUsername(data.username);
+		verifyLDAP(_username, data.password, createCallback(function(client, auth, username, ad) {
 			username = username.split("\\")[1];
 			if (auth) {
 				var msg = "Authentication as " + username + " succeeded!";
@@ -383,7 +345,7 @@ function Client(socket) {
 					if (nicknames[username]) {
 						client.firstName = nicknames[username];
 					}
-					setupUserData(adcfg, client, function(isCorrect) {
+					setupUserData(ad, client, function(isCorrect) {
 						if (isCorrect) {
 							client.isLoggedIn = true;
 							client.socket.emit("login", {"isLoggedIn": true});
