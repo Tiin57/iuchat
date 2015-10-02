@@ -169,6 +169,15 @@ var commands = {
 			}
 			sendSystemMessage(client.socket, "Your hash is " + hashes[client.username]);
 		}
+	},
+	"list": {
+		adminOnly: false,
+		help: "Lists all users online.",
+		callback: function(client, args) {
+			for (var i in clients) {
+				sendSystemMessage(client.socket, clients[i].firstName + " (" + clients[i].username + ")");
+			}
+		}
 	}
 };
 
