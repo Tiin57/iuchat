@@ -562,14 +562,21 @@ function Client(socket) {
 				return;
 			}
 		}
+		var _username = validateUsername(data.username);
 		for (var i in banned) {
-			if (i == data.username && banned[i].current) {
+			if (i == _username && banned[i].current) {
 				sendSystemMessage(client.socket, "You were banned from IU Chat by " + banned[i].author + " on " + banned[i].date + " at " + banned[i].time);
 				client.socket.emit("login", {"isLoggedIn": false});
 				return;
 			}
 		}
-		var _username = validateUsername(data.username);
+		for (var i in clients) {
+			if (clients[i].username == _username) {
+				sendSystemMessage(client.socket, "You are already connected somewhere else!");
+				client.socket.emit("login", {"isLoggedIn": false});
+				return;
+			}
+		}
 		verifyLDAP(_username, data.password, createCallback(function(client, auth, username, ad) {
 			username = username.split("\\")[1];
 			if (auth) {
