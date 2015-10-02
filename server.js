@@ -172,22 +172,34 @@ var commands = {
 	}
 };
 
-/*
+/**
 Logs a string as info.
-@param 
+@param data The object to log.
 */
 function info(data) {
 	console.log("[INFO] " + data.toString());
 }
 
+/**
+Logs a string as an error.
+@param data The object to log.
+*/
 function error(data) {
 	console.log("[ERROR] " + data.toString());
 }
 
+/**
+Logs a string as invalid info.
+@param data The object to log.
+*/
 function invalid(data) {
 	info("Received invalid data " + data.toString());
 }
 
+/**
+Creates a standard-length date string.
+@return A string representation of today's date in mm/dd/yyyy format.
+*/
 function getToday() {
 	var date = new Date();
 	var month = date.getMonth().toString();
@@ -197,6 +209,10 @@ function getToday() {
 	return month + "/" + day + "/" + date.getFullYear().toString();
 }
 
+/**
+Creates a standard-length time string.
+@return A string representation of the current time in hh:mm:ss format.
+*/
 function getNow() {
 	var date = new Date();
 	var hours = date.getHours().toString();
@@ -208,6 +224,11 @@ function getNow() {
 	return hours + ":" + minutes + ":" + seconds;
 }
 
+/**
+Wraps a callback with an additional argument, catching errors in the process.
+@param func The original callback to wrap.
+@param a The additional argument to add to the beginning of the callback.
+*/
 function createCallback(func, a) {
 	return function(b, c, d, e, f) {
 		try {
@@ -218,6 +239,12 @@ function createCallback(func, a) {
 	};
 }
 
+/**
+Sends a POST request over HTTPS.
+@param url The URL (excluding https://) to POST to.
+@param args An object of arguments to send in the POST data.
+@param callback The function to give the data to. Arguments: HTTP status code, contents of page
+*/
 function postHTTPS(url, args, callback) {
 	var data = querystring.stringify(args);
 	var tokens = url.split("/");
@@ -247,6 +274,13 @@ function postHTTPS(url, args, callback) {
 	req.end();
 }
 
+/**
+Sends a message from SYSTEM to the specified Socket.IO Socket object.
+The message can include newline ("\n") characters. Each newline marks
+a new message.
+@param socket The Socket.IO socket (can be socket.broadcast)
+@param message The message to send.
+*/
 function sendSystemMessage(socket, message) {
 	var lines = message.split("\n");
 	for (var i in lines) {
@@ -254,11 +288,24 @@ function sendSystemMessage(socket, message) {
 	}
 }
 
+/**
+Sends a message from SYSTEM to all users, given a socket.
+Cannot accept socket.broadcast.
+@param socket The Socket.IO socket
+@param message The message to send.
+*/
 function sendSystemBroadcast(socket, message) {
 	sendSystemMessage(socket, message);
 	sendSystemMessage(socket.broadcast, message);
 }
 
+/**
+Encodes and sends a message from a user to a socket.
+Accepts socket.broadcast.
+@param socket The Socket.IO socket
+@param username The username to show as the sender
+@param message The message to send.
+*/
 function sendChatMessage(socket, username, message) {
 	var data = {
 		"username": username,
@@ -270,14 +317,22 @@ function sendChatMessage(socket, username, message) {
 	socket.emit("chatmsg", data);
 }
 
+/**
+Writes the banned.json file using a JSON serialization of the global banned variable.
+*/
 function updateBans() {
 	fs.writeFileSync("./banned.json", JSON.stringify(banned));
 }
 
+/**
+Changes or sets the nickname of a Client object, given a new nickname.
+@param client The Client object to change.
+@param nickname The nickname string to set.
+*/
 function nickUser(client, nickname) {
 	for (var i in nicknames) {
 		if (nicknames[i] == nickname) {
-			sendSystemMessage(client, "Sorry, the nickname " + nickname + " is taken.");
+			sendSystemMessage(client.socket, "Sorry, the nickname " + nickname + " is taken.");
 			return;
 		}
 	}
@@ -289,6 +344,11 @@ function nickUser(client, nickname) {
 	sendSystemBroadcast(client.socket, "User " + client.username + " has changed their nickname to " + nickname + ".");
 }
 
+/**
+Sends a WHOIS message to a Client object of a specific user.
+@param client The Client object to send to.
+@param username The username to look up (cannot be a nickname).
+*/
 function whoisUser(client, username) {
 	for (var i in clients) {
 		if (clients[i].firstName == username) {
@@ -426,6 +486,9 @@ function setupUserData(ad, client, isBot, callback) {
 					client.hasNickname = true;
 				}
 			}
+			if (isBot) {
+				client.firstName += " (BOT)";
+			}
 			if (cfg.admins[client.username]) {
 				client.isAdmin = true;
 			}
@@ -507,8 +570,8 @@ function Client(socket) {
 					sendSystemMessage(socket, msg);
 					client.username = username;
 					if (nicknames[username]) {
-							client.firstName = nicknames[username];
-							client.hasNickname = true;
+						client.firstName = nicknames[username];
+						client.hasNickname = true;
 					}
 					setupUserData(ad, client, !!data.key, function(isCorrect) {
 						if (isCorrect) {
