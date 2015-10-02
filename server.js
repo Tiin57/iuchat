@@ -469,6 +469,7 @@ function Client(socket) {
 	this.socket = socket;
 	this.isAdmin = false;
 	this.hasNickname = false;
+	sendSystemMessage(this.socket, cfg.motd);
 	socket.on("login", createCallback(function(client, data) {
 		if (!data || ((!data.username && !data.key) || !data.password)) {
 			invalid(data);
