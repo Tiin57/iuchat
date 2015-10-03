@@ -639,6 +639,11 @@ function Client(socket) {
 		if (client.isLoggedIn) {
 			sendSystemMessage(io, client.firstName + " has disconnected.");
 		}
+		for (var i in clients) {
+			if (clients[i].username == client.username) {
+				clients.splice(i, 1);
+			}
+		}
 	}, this));
 }
 
