@@ -57,6 +57,9 @@ function addText(str) {
 
 function onInputSubmit() {
 	data = $("#input").val();
+	if (data == "") {
+		return;
+	}
 	$("#input").val("");
 	socket.emit("chatmsg", {
 		message: data,
@@ -66,6 +69,9 @@ function onInputSubmit() {
 
 function onLoginSubmit() {
 	data = $("#input").val();
+	if (data == "") {
+		return;
+	}
 	$("#input").val("");
 	if (!sentUsername) {
 		username = data;
