@@ -74,6 +74,7 @@ var adConfig = {
 	scope: "one",
 	"log": log
 };
+var buffer = [];
 /**
 Commands are registered here.
 Keys/values:
@@ -314,6 +315,7 @@ Accepts socket.broadcast.
 @param socket The Socket.IO socket
 @param username The username to show as the sender
 @param message The message to send.
+@return The Message object
 */
 function sendChatMessage(socket, username, message) {
 	var data = {
@@ -324,6 +326,29 @@ function sendChatMessage(socket, username, message) {
 		"channel": "#general"
 	};
 	socket.emit("chatmsg", data);
+	return data
+}
+
+/**
+Adds a Message object to the buffer.
+@param message The Message object to buffer.
+*/
+function addBuffer(message) {
+	buffer.push(message);
+	if (buffer.length > cfg.maxBufferSize) {
+		buffer.splice(0, 1);
+	}
+}
+
+/**
+Sends the current buffer to a socket.
+Should only be used on first join.
+@param socket The socket to send the buffer to.
+*/
+function sendBuffer(socket) {
+	for (var i in buffer) {
+		socket.emit("chatmsg", buffer[i]);
+	}
 }
 
 /**
@@ -548,6 +573,7 @@ function Client(socket) {
 	this.isAdmin = false;
 	this.hasNickname = false;
 	sendSystemMessage(this.socket, cfg.motd);
+	sendBuffer(this.socket);
 	socket.on("login", createCallback(function(client, data) {
 		if (!data || ((!data.username && !data.key) || !data.password)) {
 			invalid(data);
@@ -637,7 +663,8 @@ function Client(socket) {
 				sendSystemMessage(client.socket, "Command " + cmd + " is not valid.");
 			}
 		} else {
-			sendChatMessage(client.socket.broadcast, (client.hasNickname ? "~" : "") + client.firstName, data.message);
+			var msg = sendChatMessage(client.socket.broadcast, (client.hasNickname ? "~" : "") + client.firstName, data.message);
+			addBuffer(msg);
 			sendChatMessage(client.socket, (client.hasNickname ? "~" : "") + client.firstName, data.message);
 		}
 	}, this));

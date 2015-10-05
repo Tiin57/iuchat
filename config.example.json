@@ -19,5 +19,6 @@
 		"useMe": false,
 		"url": "http://domain.me/ldap.php"
 	},
-	"motd": "Hi! This is an MOTD. Tell the admin to change me!"
+	"motd": "Hi! This is an MOTD. Tell the admin to change me!",
+	"maxBufferSize": 10
 }
