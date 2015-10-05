@@ -367,6 +367,12 @@ function whoisUser(client, username) {
 	}
 }
 
+/**
+Kicks a user, broadcasting the kicker and kickee.
+@param author The nickname of the admin kicking the user
+@param username The username of the user being kicked
+@param reason The reason for the kick.
+*/
 function kickUser(author, username, reason) {
 	for (var i in clients) {
 		if (clients[i].username == username) {
