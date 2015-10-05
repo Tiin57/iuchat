@@ -63,7 +63,7 @@ var log = bunyan.createLogger({
 	"name": "IU Chat",
 	"streams": [{
 		"level": "error",
-		"stream": fs.createWriteStream("iuchat-adtrace.log")
+		"stream": fs.createWriteStream("logs/adtrace-" + (getToday().replace(/\//g, "-")) + ".log")
 	}]
 });
 var clients = []; // We need this for WHOIS and KICK.
@@ -187,7 +187,7 @@ Logs a string as info.
 @param data The object to log.
 */
 function info(data) {
-	console.log("[INFO] " + data.toString());
+	writeLog("[INFO] " + data.toString());
 }
 
 /**
@@ -195,7 +195,7 @@ Logs a string as an error.
 @param data The object to log.
 */
 function error(data) {
-	console.log("[ERROR] " + data.toString());
+	writeLog("[ERROR] " + data.toString());
 }
 
 /**
@@ -204,6 +204,12 @@ Logs a string as invalid info.
 */
 function invalid(data) {
 	info("Received invalid data " + data.toString());
+}
+
+function writeLog(data) {
+	data = "[" + getToday() + "] [" + getNow() + "] " + data.toString();
+	fs.appendFileSync("logs/iuchat-" + (getToday().replace(/\//g, "-")) + ".log", data + "\n");
+	console.log(data);
 }
 
 /**
@@ -370,7 +376,7 @@ function nickUser(client, nickname) {
 			return;
 		}
 	}
-	nickname = nickname.replace(" ", "").replace("\\", "").replace("*", "").replace("(", "").replace(")", "");
+	nickname = nickname.replace(/\ /g, "").replace(/\\/g, "").replace(/\*/g, "").replace(/\(/g, "").replace(/\)/g, "");
 	nicknames[client.username] = nickname;
 	client.firstName = nickname;
 	client.hasNickname = true;
@@ -559,7 +565,7 @@ function setupUserData(ad, client, isBot, callback) {
 }
 
 function validateUsername(username) {
-	return username.replace("*", "").replace("(", "").replace(")", "").replace("\\", "");
+	return username.replace(/\*/g, "").replace(/\(/g, "").replace(/\)/g, "").replace(/\\/g, "");
 }
 
 /*
@@ -680,11 +686,16 @@ function Client(socket) {
 	}, this));
 }
 
+try {
+	fs.accessSync("logs", fs.F_OK);
+} catch (ex) {
+	fs.mkdirSync("logs");
+}
 io.on("connection", function(socket) {
 	clients.push(new Client(socket));
-	console.log("Client connected.");
+	info("Client connected.");
 });
 
 httpServer.listen(cfg.port, function() {
-	console.log("Server started on port " + cfg.port);
+	info("Server started on port " + cfg.port);
 });
