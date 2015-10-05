@@ -617,7 +617,7 @@ function Client(socket) {
 				return;
 			}
 		}
-		if (!isBot) {
+		if (!data.key) {
 			for (var i in clients) {
 				if (clients[i].username == _username) {
 					sendSystemMessage(client.socket, "You are already connected somewhere else!");
