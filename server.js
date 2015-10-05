@@ -9,7 +9,8 @@ If you don't believe that I labeled every password-accessing method, that's fine
 very well could have missed one. Look through all of the source code and submit a pull
 request adding the missing notice as necessary. There's a reason this is open-source,
 people. By the way, all communication, from client to server and from server to LDAP
-server, is encrypted with SSL. I strongly suggest acquiring signed SSL certificates.
+server, is encrypted with SSL by default. It is possible to disable this, but instead
+I strongly suggest acquiring signed SSL certificates.
 
 Author: Alexander David Hicks (Tiin57, aldahick)
 Date created: 29 September, 2015
@@ -508,6 +509,13 @@ function verifyLDAP(username, password, callback) {
 	}
 }
 
+/*
+*** PASSWORD ACCESS ***
+If proxy.useMe is true in config.json, this will POST over
+HTTPS to authenticate you. If proxy.useMe is false, there is
+no password access in this method (the object type of "ad"
+changes depending on the value of proxy.useMe).
+*/
 function setupUserData(ad, client, isBot, callback) {
 	var username = client.username;
 	if (cfg.proxy.useMe) {
@@ -569,7 +577,8 @@ function validateUsername(username) {
 }
 
 /*
-*** PASSWORD ACCESS *** - Specifically, the socket.on("login") callback.
+*** PASSWORD ACCESS ***
+Specifically, the socket.on("login") callback.
 */
 function Client(socket) {
 	this.username = "";
