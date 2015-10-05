@@ -1,6 +1,6 @@
 var io = require("socket.io-client");
 var cfg = require("./config.bot.json");
-var socket = io.connect("wss://testing.csclub.cs.iupui.edu:4236");
+var socket = io.connect("wss://ssl.alexhicks.net:4236");
 
 function sendMessage(msg) {
 	socket.emit("chatmsg", {

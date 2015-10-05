@@ -617,11 +617,13 @@ function Client(socket) {
 				return;
 			}
 		}
-		for (var i in clients) {
-			if (clients[i].username == _username) {
-				sendSystemMessage(client.socket, "You are already connected somewhere else!");
-				client.socket.emit("login", {"isLoggedIn": false});
-				return;
+		if (!isBot) {
+			for (var i in clients) {
+				if (clients[i].username == _username) {
+					sendSystemMessage(client.socket, "You are already connected somewhere else!");
+					client.socket.emit("login", {"isLoggedIn": false});
+					return;
+				}
 			}
 		}
 		verifyLDAP(_username, data.password, createCallback(function(client, auth, username, ad) {
