@@ -4,6 +4,7 @@ var sentUsername = false;
 var username = "";
 var password = "";
 var serverURL = "wss://testing.csclub.cs.iupui.edu:4236/";
+var isLoggedIn = false;
 
 function getWindowWidth() {
 	var width;
@@ -68,45 +69,15 @@ function onInputSubmit() {
 }
 
 function onLoginSubmit() {
-	data = $("#input").val();
-	if (data == "") {
-		return;
-	}
-	$("#input").val("");
-	if (!sentUsername) {
-		username = data;
-		sentUsername = true;
-		document.getElementById("input").type = "password";
-		document.getElementById("input").placeholder = "IU Password";
-	} else {
-		password = data;
-		socket.emit("login", {
-			username: username,
-			password: password
-		});
-		document.getElementById("input").type = "text";
-		document.getElementById("input").placeholder = "";
-	}
+	
 }
 
-function setupPostLogin() {
+function setupForm() {
 	document.getElementById("input").placeholder = "";
 	document.getElementById("submit").onclick = onInputSubmit;
 	document.getElementById("input").onkeydown = function(evt) {
 		if (evt.keyCode == 13) {
 			onInputSubmit();
-		}
-	};
-}
-
-function setupPreLogin() {
-	document.getElementById("submit").onclick = onLoginSubmit;
-	document.getElementById("input").placeholder = "IU Username";
-	sentUsername = false;
-	document.getElementById("input").type = "text";
-	document.getElementById("input").onkeydown = function(evt) {
-		if (evt.keyCode == 13) {
-			onLoginSubmit();
 		}
 	};
 }
@@ -121,35 +92,39 @@ function processMessage(data) {
 $(function() {
 	fixClientSizes();
 	$(window).resize(fixClientSizes);
-	socket = io(serverURL);
-	socket.on("chatmsg", function(data) {
-		processMessage(data);
-	});
-	socket.on("login", function(data) {
-		if (!data.isLoggedIn) {
-			sentUsername = false;
-			document.getElementById("input").placeholder = "IU Username";
-		} else {
-			setupPostLogin();
-		}
-	});
-	socket.on("connect", function() {
-		addText("Connected to the server (" + serverURL + ")");
-		if (serverURL.startsWith("wss://")) {
-			addText("Your connection to the server is encrypted via SSL.");
-		}
-		addText("Please enter your username and password in the input field below.");
-		if (username != "" && password != "") {
-			socket.emit("login", {
-				username: username,
-				password, password
-			});
-			addText("Attempting to reconnect to the server...");
-		}
-	});
-	socket.on("disconnect", function() {
-		addText("Disconnected from the server (" + serverURL + ")");
-	});
-	setupPreLogin();
-	$("#input").focus();
-;});
+	if (!isLoggedIn) {
+		addText("<a href='https://cas.iu.edu/cas/login/?cassvc=IU&casurl=https://" + window.location.host + "/chat/'>Please log in</a>");
+	} else {
+		socket = io(serverURL);
+		socket.on("chatmsg", function(data) {
+			processMessage(data);
+		});
+		socket.on("login", function(data) {
+			if (!data.isLoggedIn) {
+				sentUsername = false;
+				document.getElementById("input").placeholder = "IU Username";
+			} else {
+				setupPostLogin();
+			}
+		});
+		socket.on("connect", function() {
+			addText("Connected to the server (" + serverURL + ")");
+			if (serverURL.startsWith("wss://")) {
+				addText("Your connection to the server is encrypted via SSL.");
+			}
+			addText("Please enter your username and password in the input field below.");
+			if (username != "" && password != "") {
+				socket.emit("login", {
+					username: username,
+					password, password
+				});
+				addText("Attempting to reconnect to the server...");
+			}
+		});
+		socket.on("disconnect", function() {
+			addText("Disconnected from the server (" + serverURL + ")");
+		});
+		setupPreLogin();
+		$("#input").focus();
+	}
+});

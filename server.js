@@ -292,6 +292,33 @@ function postHTTPS(url, args, callback) {
 }
 
 /**
+Sends a GET request over HTTPS. Same as postHTTPS().
+*/
+function getHTTPS(url, args, callback) {
+	var data = querystring.stringify(args);
+	var tokens = url.split("/");
+	var host = tokens.splice(0, 1)[0];
+	var path = "/" + tokens.join("/");
+	var options = {
+		hostname: host,
+		port: 443,
+		"path": path,
+		method: "GET"
+	};
+	var ret = "";
+	var req = https.request(options, function(res) {
+		res.setEncoding("utf8");
+		res.on("data", function(chunk) {
+			ret += chunk;
+		});
+		res.on("end", function() {
+			callback(res.statusCode, ret);
+		});
+	});
+	req.end();
+}
+
+/**
 Sends a message from SYSTEM to the specified Socket.IO Socket object.
 The message can include newline ("\n") characters. Each newline marks
 a new message.
