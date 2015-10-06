@@ -13,6 +13,15 @@ function getParameterByName(name) {
 	return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
 }
 
+function escapeHTML(str) {
+	return String(str)
+		.replace(/&/g, "&amp;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;");
+}
+
 function getLocation() {
 	return encodeURIComponent(window.location.href);
 }
@@ -63,7 +72,7 @@ function scrollBottom() {
 }
 
 function addText(str) {
-	document.getElementById("output").innerHTML += str + "<br />";
+	document.getElementById("output").innerHTML += escapeHTML(str) + "<br />";
 	scrollBottom();
 }
 
