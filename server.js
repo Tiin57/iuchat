@@ -73,7 +73,12 @@ var adConfig = {
 	url: "ldap" + (cfg.ldap.ssl ? "s" : "") + "://" + cfg.ldap.server + ":" + cfg.ldap.port,
 	baseDN: cfg.ldap.baseDN,
 	scope: "one",
-	"log": log
+	"log": log,
+	hostname: cfg.ldap.server,
+	port: cfg.ldap.port,
+	ssl: cfg.ldap.ssl,
+	username: cfg.ldap.username,
+	password: cfg.ldap.password
 };
 var buffer = [];
 /**
@@ -489,51 +494,33 @@ function generateBotHash() {
 
 /*
 *** PASSWORD ACCESS ***
-Builds a modified configuration based on <username> and <password>.
-Should only be called by verifyLDAP().
-*/
-function generateADConfig(username, password) {
-	return {
-		url: adConfig.url,
-		hostname: cfg.ldap.server,
-		port: cfg.ldap.port,
-		ssl: cfg.ldap.ssl,
-		baseDN: adConfig.baseDN,
-		scope: adConfig.scope,
-		log: adConfig.log,
-		"username": username,
-		"password": password
-	};
-}
-
-/*
-*** PASSWORD ACCESS ***
 Checks <username> and <password> against Active Directory as a user.
 */
 function verifyLDAP(username, password, callback) {
 	username = "ADS\\" + username;
 	var adcfg = generateADConfig(username, password);
-	if (cfg.proxy.useMe) {
-		adcfg.operation = "authenticate";
-		adcfg.rawUsername = username;
-		postHTTPS(cfg.proxy.url, adcfg, function(code, auth) {
-			if (code != 200 || auth.startsWith("err")) {
-				error("Failed at verifyLDAP with " + auth);
-				callback(false, username, null);
-				return;
-			}
-			callback(auth == "true", username, adcfg);
-		});
-	} else {
-		var ad = new ActiveDirectory(adcfg);
-		ad.authenticate(username, password, function(err, auth) {
-			if (err) {
-				callback(false, username, null);
-				return;
-			}
-			callback(!!auth, username, ad);
-		});
-	}
+	// if (cfg.proxy.useMe) {
+	// 	adcfg.operation = "authenticate";
+	// 	adcfg.rawUsername = username;
+	// 	postHTTPS(cfg.proxy.url, adcfg, function(code, auth) {
+	// 		if (code != 200 || auth.startsWith("err")) {
+	// 			error("Failed at verifyLDAP with " + auth);
+	// 			callback(false, username, null);
+	// 			return;
+	// 		}
+	// 		callback(auth == "true", username, adcfg);
+	// 	});
+	// } else {
+	// 	var ad = new ActiveDirectory(adcfg);
+	// 	ad.authenticate(username, password, function(err, auth) {
+	// 		if (err) {
+	// 			callback(false, username, null);
+	// 			return;
+	// 		}
+	// 		callback(!!auth, username, ad);
+	// 	});
+	// }
+
 }
 
 /*
