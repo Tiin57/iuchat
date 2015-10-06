@@ -72,7 +72,7 @@ function scrollBottom() {
 }
 
 function addText(str) {
-	document.getElementById("output").innerHTML += escapeHTML(str) + "<br />";
+	document.getElementById("output").innerHTML += str + "<br />";
 	scrollBottom();
 }
 
@@ -124,7 +124,7 @@ function processMessage(data) {
 	if (!data || !data.time || !data.username || !data.message || !data.channel) {
 		return false;
 	}
-	addText("[" + data.time + "] " + data.username + ": " + data.message);
+	addText(escapeHTML("[" + data.time + "] " + data.username + ": " + data.message));
 }
 
 $(function() {
