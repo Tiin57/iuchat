@@ -17,14 +17,13 @@ $url = "ldap" . ($ssl == "true" ? "s" : "") . "://" . $hostname . ":" . $port;
 $ldap = ldap_connect($url);
 ldap_set_option($ldap, LDAP_OPT_REFERRALS, 0);
 if ($bind = ldap_bind($ldap, $username, $password)) {
-	if ($operation == "authenticate") {
-		echo("true");
-	} else if ($operation == "getUser") {
+	if ($operation == "getUser") {
 		$query = "(name=" . $rawUsername . ")";
 		$results = ldap_search($ldap, $baseDN, $query);
 		$data = ldap_get_entries($ldap, $results);
 		if ($data["count"] == 0) {
 			echo("err101 " . ldap_error($ldap));
+			var_dump($_POST);
 		} else {
 			echo(json_encode($data[0]));
 		}

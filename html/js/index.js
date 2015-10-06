@@ -125,7 +125,8 @@ $(function() {
 	if (casticket != "") {
 		setupForm();
 		socket.emit("login", {
-			"casticket": casticket
+			"token": casticket,
+			"url": window.location.protocol + "//" + window.location.host + window.location.pathname
 		});
 	} else {
 		addText("<a href='https://cas.iu.edu/cas/login/?cassvc=IU&casurl=" + getLocation() + "'>Please log in</a>");

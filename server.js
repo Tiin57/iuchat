@@ -1,17 +1,4 @@
 /*
-*** SECURITY NOTICE ***
-Understandably, there may be concerns about password security in an application
-that authenticates against an LDAP server. Please rest assured that any and all
-passwords that this program utilizes are not stored or saved in any way. Any method
-that accesses user passwords are labeled with "*** PASSWORD ACCESS ***" for convenience.
-If you don't believe my statement, that's fine. Look through those methods yourself.
-If you don't believe that I labeled every password-accessing method, that's fine. I
-very well could have missed one. Look through all of the source code and submit a pull
-request adding the missing notice as necessary. There's a reason this is open-source,
-people. By the way, all communication, from client to server and from server to LDAP
-server, is encrypted with SSL by default. It is possible to disable this, but instead
-I strongly suggest acquiring signed SSL certificates.
-
 Author: Alexander David Hicks (Tiin57, aldahick)
 Date created: 29 September, 2015
 */
@@ -212,6 +199,10 @@ function invalid(data) {
 	info("Received invalid data " + data.toString());
 }
 
+/**
+Logs a string.
+@param data The object to log.
+*/
 function writeLog(data) {
 	data = "[" + getToday() + "] [" + getNow() + "] " + data.toString();
 	fs.appendFileSync("logs/iuchat-" + (getToday().replace(/\//g, "-")) + ".log", data + "\n");
@@ -307,7 +298,7 @@ function getHTTPS(url, args, callback) {
 	var options = {
 		hostname: host,
 		port: 443,
-		"path": path,
+		"path": path + "?" + data,
 		method: "GET"
 	};
 	var ret = "";
@@ -492,50 +483,33 @@ function generateBotHash() {
 	}
 }
 
-/*
-*** PASSWORD ACCESS ***
-Checks <username> and <password> against Active Directory as a user.
-*/
-function verifyLDAP(username, password, callback) {
-	username = "ADS\\" + username;
-	var adcfg = generateADConfig(username, password);
-	// if (cfg.proxy.useMe) {
-	// 	adcfg.operation = "authenticate";
-	// 	adcfg.rawUsername = username;
-	// 	postHTTPS(cfg.proxy.url, adcfg, function(code, auth) {
-	// 		if (code != 200 || auth.startsWith("err")) {
-	// 			error("Failed at verifyLDAP with " + auth);
-	// 			callback(false, username, null);
-	// 			return;
-	// 		}
-	// 		callback(auth == "true", username, adcfg);
-	// 	});
-	// } else {
-	// 	var ad = new ActiveDirectory(adcfg);
-	// 	ad.authenticate(username, password, function(err, auth) {
-	// 		if (err) {
-	// 			callback(false, username, null);
-	// 			return;
-	// 		}
-	// 		callback(!!auth, username, ad);
-	// 	});
-	// }
-
+function verifyLDAP(url, castoken, data, callback) {
+	var data = {
+		"cassvc": "IU",
+		"casticket": castoken,
+		"casurl": url
+	};
+	getHTTPS("cas.iu.edu/cas/validate", data, function(code, data) {
+		if (code != 200) {
+			error("Failed at verifyLDAP with code " + code);
+			callback(false, "");
+			return;
+		}
+		var lines = data.split("\n");
+		if (lines[0].trim() == "yes") {
+			callback(true, lines[1].trim(), data);
+		} else {
+			callback(false, "", data);
+		}
+	});
 }
 
-/*
-*** PASSWORD ACCESS ***
-If proxy.useMe is true in config.json, this will POST over
-HTTPS to authenticate you. If proxy.useMe is false, there is
-no password access in this method (the object type of "ad"
-changes depending on the value of proxy.useMe).
-*/
-function setupUserData(ad, client, isBot, callback) {
+function setupUserData(client, isBot, callback) {
 	var username = client.username;
 	if (cfg.proxy.useMe) {
-		ad.operation = "getUser";
-		ad.rawUsername = username;
-		postHTTPS(cfg.proxy.url, ad, function(code, user) {
+		adConfig.operation = "getUser";
+		adConfig.rawUsername = username;
+		postHTTPS(cfg.proxy.url, adConfig, function(code, user) {
 			if (code != 200) {
 				error("Failed at setupUserData");
 				callback(false);
@@ -590,10 +564,52 @@ function validateUsername(username) {
 	return username.replace(/\*/g, "").replace(/\(/g, "").replace(/\)/g, "").replace(/\\/g, "");
 }
 
-/*
-*** PASSWORD ACCESS ***
-Specifically, the socket.on("login") callback.
-*/
+function onVerify(client, auth, username, data) {
+	if (auth) {
+		var msg = "Authentication as " + username + " succeeded!";
+		for (var i in banned) {
+			if (i == username && banned[i].current) {
+				sendSystemMessage(client.socket, "You were banned from IU Chat by " + banned[i].author + " on " + banned[i].date + " at " + banned[i].time);
+				client.socket.emit("login", {"isLoggedIn": false});
+				return;
+			}
+		}
+		if (!data.key) {
+			for (var i in clients) {
+				if (clients[i].username == username) {
+					sendSystemMessage(client.socket, "You are already connected somewhere else!");
+					client.socket.emit("login", {"isLoggedIn": false});
+					return;
+				}
+			}
+		}
+		try {
+			info(msg);
+			sendSystemMessage(client.socket, msg);
+			client.username = username;
+			if (nicknames[username]) {
+				client.firstName = nicknames[username];
+				client.hasNickname = true;
+			}
+			setupUserData(client, !!data.key, function(isCorrect) {
+				if (isCorrect) {
+					client.isLoggedIn = true;
+					client.socket.emit("login", {"isLoggedIn": true});
+					sendSystemBroadcast(client.socket, client.firstName + " has connected.");
+				}
+			});
+		} catch (ex) {
+			error("Exception " + ex.toString());
+			client.socket.emit("login", {"isLoggedIn": false});
+		}
+	} else {
+		var msg = "Authentication as " + username + " failed!";
+		info(msg);
+		sendSystemMessage(client.socket, msg);
+		client.socket.emit("login", {"isLoggedIn": false});
+	}
+}
+
 function Client(socket) {
 	this.username = "";
 	this.isLoggedIn = false;
@@ -604,7 +620,7 @@ function Client(socket) {
 	sendSystemMessage(this.socket, cfg.motd);
 	sendBuffer(this.socket);
 	socket.on("login", createCallback(function(client, data) {
-		if (!data || ((!data.username && !data.key) || !data.password)) {
+		if (!data || !data.url || (!data.key && !data.token)) {
 			invalid(data);
 			return;
 		}
@@ -623,53 +639,7 @@ function Client(socket) {
 				return;
 			}
 		}
-		var _username = validateUsername(data.username);
-		for (var i in banned) {
-			if (i == _username && banned[i].current) {
-				sendSystemMessage(client.socket, "You were banned from IU Chat by " + banned[i].author + " on " + banned[i].date + " at " + banned[i].time);
-				client.socket.emit("login", {"isLoggedIn": false});
-				return;
-			}
-		}
-		if (!data.key) {
-			for (var i in clients) {
-				if (clients[i].username == _username) {
-					sendSystemMessage(client.socket, "You are already connected somewhere else!");
-					client.socket.emit("login", {"isLoggedIn": false});
-					return;
-				}
-			}
-		}
-		verifyLDAP(_username, data.password, createCallback(function(client, auth, username, ad) {
-			username = username.split("\\")[1];
-			if (auth) {
-				var msg = "Authentication as " + username + " succeeded!";
-				try {
-					info(msg);
-					sendSystemMessage(socket, msg);
-					client.username = username;
-					if (nicknames[username]) {
-						client.firstName = nicknames[username];
-						client.hasNickname = true;
-					}
-					setupUserData(ad, client, !!data.key, function(isCorrect) {
-						if (isCorrect) {
-							client.isLoggedIn = true;
-							client.socket.emit("login", {"isLoggedIn": true});
-							sendSystemBroadcast(client.socket, client.firstName + " has connected.");
-						}
-					});
-				} catch (ex) {
-					error("Exception " + ex.toString());
-					client.socket.emit("login", {"isLoggedIn": false});
-				}
-			} else {
-				var msg = "Authentication as " + username + " failed!";
-				info(msg);
-				sendSystemMessage(socket, msg);
-				client.socket.emit("login", {"isLoggedIn": false});
-			}
-		}, client));
+		verifyLDAP(data.url, data.token, data, createCallback(onVerify, client));
 	}, this));
 	socket.on("chatmsg", createCallback(function(client, data) {
 		if (!data.message || !data.channel) {

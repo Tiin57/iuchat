@@ -4,7 +4,9 @@
 		"server": "ads.iu.edu",
 		"port": 636,
 		"ssl": true,
-		"baseDN": "dc=ads,dc=iu,dc=edu"
+		"baseDN": "dc=ads,dc=iu,dc=edu",
+		"username": "admin",
+		"password": "iuchat"
 	},
 	"admins": {
 		"aldahick": true
