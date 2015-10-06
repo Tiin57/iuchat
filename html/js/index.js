@@ -124,7 +124,18 @@ function processMessage(data) {
 	if (!data || !data.time || !data.username || !data.message || !data.channel) {
 		return false;
 	}
-	addText(escapeHTML("[" + data.time + "] " + data.username + ": " + data.message));
+	var tokens = escapeHTML(data.message).split(" ");
+	for (var i in tokens) {
+		if (/^(https|http)\:\/\//.test(tokens[i])) {
+			var url = tokens[i];
+			if (/\.(jpg|jpeg|png|gif)$/.test(tokens[i])) {
+				tokens[i] = "<img width=200 height=200 src='" + url + "' alt='" + tokens[i] + "' />";
+			}
+			tokens[i] = "<a href='" + url + "' target='_blank'>" + tokens[i] + "</a>";
+		}
+	}
+	var message = tokens.join(" ");
+	addText("[" + data.time + "] " + escapeHTML(data.username) + ": " + message);
 }
 
 $(function() {
