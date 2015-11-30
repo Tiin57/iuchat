@@ -537,6 +537,7 @@ function setupUserData(client, isBot, callback) {
 			callback(true);
 		});
 	} else {
+		var ad = new ActiveDirectory(adConfig);
 		ad.findUser(username, function(err, user) {
 			if (err) {
 				callback(false);
