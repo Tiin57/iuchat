@@ -1,0 +1,8 @@
+{
+    "dirs": {
+        "root": "/full/path/to/root"
+    },
+    "server": {
+        "useSSL": false
+    }
+}
