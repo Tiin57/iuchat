@@ -2,15 +2,6 @@ import * as env from "../autoload";
 
 import * as socketIO from "socket.io";
 
-interface DataLogin {
-    url : string;
-    token : string;
-}
-
-interface DataMessage {
-
-}
-
 export default class User {
     public socket : SocketIO.Socket;
     public username : string;
@@ -20,15 +11,42 @@ export default class User {
     }
     private init() : void {
         var user : User = this;
-        this.socket.on(env.protocol.login, function(data : DataLogin) {
-            if (!data.url || !data.token) {
-                env.logger.warn("Invalid data " + data.toString());
+        this.socket.on(env.protocol.login, function(data : env.DataLogin) {
+            if (!env.protocol.checkLogin(data)) {
+                env.logger.warn("Invalid data " + JSON.stringify(data));
                 return;
             }
             user.verify(data);
         });
+        this.socket.on(env.protocol.message, function(data : env.DataMessage) {
+            if (!env.protocol.checkMessage(data)) {
+                env.logger.warn("Invalid data " + JSON.stringify(data));
+                return;
+            }
+            if (!user.isLoggedIn) {
+                user.sendSystem("You are not logged in.");
+                return;
+            }
+            var now : Date = new Date();
+            if (data.message.startsWith("/")) { // commands
+
+            } else { // non-commands
+                var msg : env.ServerMessage = {
+                    "message": data.message,
+                    "from": user.username,
+                    "date": env.clock.getDate(new Date()),
+                    "time": env.clock.getTime(now),
+                    "channel": data.channel
+                };
+                user.socket.broadcast.emit(env.protocol.message, msg);
+                user.send(msg);
+            }
+        });
+        this.socket.on("disconnect", function() {
+
+        });
     }
-    public verify(data : DataLogin) {
+    public verify(data : env.DataLogin) {
         var user : User = this;
         var getParams = {
             "cassvc": "IU",
@@ -59,10 +77,8 @@ export default class User {
         this.isLoggedIn = true;
         this.socket.emit(env.protocol.login, {"isLoggedIn": true});
     }
-    public send(from : string, msg : string) {
-        this.socket.emit(env.protocol.message, {
-
-        });
+    public send(msg : env.ServerMessage) {
+        this.socket.emit(env.protocol.message, msg);
     }
     public sendSystem(msg : string) {
 

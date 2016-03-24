@@ -46,8 +46,7 @@ export class ChatServer {
     }
     public start() : void {
         this.server.listen(env.config.server.port, function() {
-            env.logger.info("Server running on port "
-                + env.config.server.port + "...");
+            env.logger.info("Server running on port " + env.config.server.port + "...");
         });
     }
 }

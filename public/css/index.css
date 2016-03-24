@@ -1,0 +1,76 @@
+#chat-window {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 85%;
+    height: 85%;
+}
+
+#message-window, #input-container {
+    position: absolute;
+    left: 0;
+    right: 0;
+}
+
+#input-container {
+    display: block;
+    bottom: 0;
+    height: 1em;
+    padding: 0.5em;
+}
+
+#input-chat-message {
+    width: 85%;
+    max-width: 85%;
+    margin-right: 0;
+}
+
+.word-wrap {
+    /*CSS3*/
+    white-space: pre-wrap;
+    /*Firefox*/
+    white-space: -moz-pre-wrap;
+    /*Opera < 7*/
+    white-space: -pre-wrap;
+    /*Opera 7*/
+    white-space: -o-pre-wrap;
+    /*Internet Explorer*/
+    word-wrap: break-word;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.form-control-inline {
+    min-width: 0;
+    width: auto;
+    display: inline;
+}
+
+.border-none {
+    border-style: none;
+    border-color: transparent;
+    overflow: auto;
+    resize: none;
+}
+
+#table-container {
+    overflow: auto;
+    height: 90%;
+    max-height: 90%;
+    margin: 0;
+}
+
+#message-window {
+    overflow: auto;
+    top: 0;
+    bottom: 3em;
+    max-height: 80%;
+    margin: 0;
+    padding: 0;
+    display: block;
+    width: 100%;
+}

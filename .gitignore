@@ -3,8 +3,8 @@ typings
 lib/*.json
 !lib/*.sample.json
 logs
-public/assets
 *.bat
 *.sh
 *.js
 old
+!public/js/*.js
